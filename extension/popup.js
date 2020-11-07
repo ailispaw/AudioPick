@@ -1,5 +1,4 @@
 /*
- * $Id: popup.js 57 2016-05-21 19:35:55Z  $
  */
  
 'use strict';
@@ -7,6 +6,10 @@
 var bg = chrome.extension.getBackgroundPage();
 var default_no = bg.document.getElementById("default_no");
 var sink_no = default_no.value;
+
+const constraints = {
+	audio: true
+  };
 
 // -- Update the temporary device selection page 
  function init() {
@@ -23,6 +26,7 @@ var sink_no = default_no.value;
 						log("Received Response: " + response.sink_no);
 						sink_no = response.sink_no;
 					}
+			//		navigator.mediaDevices.getUserMedia(constraints);
 					navigator.mediaDevices.enumerateDevices()
 						.then(update_device_popup)
 						.catch(errorCallback);

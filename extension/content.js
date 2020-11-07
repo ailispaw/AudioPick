@@ -1,5 +1,4 @@
 /*
- * $Id: content.js 57 2016-05-21 19:35:55Z  $
  */
 
  'use strict';
@@ -9,12 +8,17 @@ var sink_id = 'default';
 var frame_url = location.protocol + '//'+ location.host + location.pathname;
 var frame_depth = get_depth(window.self);
 var GUM_state = undefined;
+var default_device_name = undefined;// ex : 'Analog out 03-04 (AudioFire 12)';
 /*
  * undefined == wait with getUserMedia() until we know that we actually need to call setSinkId 
  *         0 == last call to setSinkId failed. Going to call getUserMedia() next time
  *         1 == getUserMedia() succeeded 
  *        -1 == getUserMedia() failed 
  */
+
+const constraints = {
+  audio: true
+};
  
 function get_depth(w) {
 	if (w.parent == w) {
@@ -39,7 +43,7 @@ function register_message_listener() {
 				log('Received message: browser_action_commit, sink_no: ' + request.sink_no);
 				if (request.sink_no != undefined) {
 					sink_no = request.sink_no;
-					get_devices(); // --> inspect_device_infos() --> update_all_sinks()
+					get_devices(true, inspect_devices); // --> inspect_device_infos() --> update_all_sinks()
 				}
 			} else if (request.message == "report_sink_no") {
 				log('Received message: report_sink_no');
@@ -97,7 +101,6 @@ function request_default_no() {
 			if (response) {
 				log('Received default_no: ' + response.default_no);
 				sink_no = response.default_no;
-				get_devices();
 			}
 		}
 	)
@@ -115,9 +118,13 @@ function request_help_with_GUM() {
 	);
 }
 
-function get_devices() {
+
+function get_devices(getUserMedia, callback) {
+	if(getUserMedia) {
+    	navigator.mediaDevices.getUserMedia(constraints);
+	}
 	navigator.mediaDevices.enumerateDevices()
-		.then(inspect_devices)
+		.then(callback)
 		.catch(errorCallback);
 }
 
@@ -143,12 +150,13 @@ function with_or_without_GUM() {
 }
 
 function update_all_sinks() {
-	var promises = [];
+		var promises = [];
 	var allMedia = document.querySelectorAll('audio,video');
 	for (var j = 0; j < allMedia.length; j++) {
 		var name = allMedia[j].nodeName;
 		var src = allMedia[j].currentSrc;
 		log('  Queuing SetSinkId: ' + j + ': ' + name + ': ' +  src + ': ' + sink_id);
+		
 		promises.push(allMedia[j].setSinkId(sink_id));
 	}
 	if (promises.length > 0) {
@@ -170,8 +178,26 @@ function update_all_sinks() {
 	register_observer();
 }
 
+function setDefaultDevice()
+{
+	if(default_device_name !== undefined)
+	{
+		get_devices(false, function(deviceInfos)
+		{
+			for (var i = 0; i != deviceInfos.length; i++) {
+				var deviceInfo = deviceInfos[i];
+				if ((deviceInfo.kind == 'audiooutput') && (deviceInfo.label == default_device_name)) {
+					sink_id = deviceInfo.deviceId;
+					sink_no = i;
+					break;
+				}
+			}
+			update_all_sinks();
+		});
+	}
+}
+
 // -- main ---------------------------------------------------------------
 register_message_listener();
 request_default_no();
-
-
+setDefaultDevice();

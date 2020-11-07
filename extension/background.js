@@ -1,5 +1,4 @@
 /*
- * $Id: background.js 57 2016-05-21 19:35:55Z  $
  */
 
  'use strict';
@@ -8,6 +7,10 @@
  var stored_no = 0;
  var extension_id = chrome.runtime.id;
  
+ const constraints = {
+	audio: true
+  };
+
  // Haha, it seems we no longer need getUserMedia() ...
 chrome.contentSettings['microphone'].set({'primaryPattern':'*://' + extension_id + '/*','setting':'allow'});
 
@@ -53,6 +56,7 @@ chrome.runtime.onMessage.addListener(
 function init() {
 	var default_no = document.getElementById("default_no");
 	default_no.value = stored_no;
+//	navigator.mediaDevices.getUserMedia(constraints);
 	navigator.mediaDevices.enumerateDevices()
 		.then(update_device_cache)
 		.catch(errorCallback);
