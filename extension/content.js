@@ -3,8 +3,8 @@
 
  'use strict';
  
-var sink_no = 0;
-var sink_id = 'default';
+ var sink_id   = 'default';
+ var sink_name = 'System Default Device';
 var frame_url = location.protocol + '//'+ location.host + location.pathname;
 var frame_depth = get_depth(window.self);
 var GUM_state = undefined;
@@ -40,15 +40,15 @@ function register_message_listener() {
 	chrome.runtime.onMessage.addListener(
 		function(request, sender, sendResponse) {
 			if (request.message === "browser_action_commit" ) {
-				log('Received message: browser_action_commit, sink_no: ' + request.sink_no);
-				if (request.sink_no != undefined) {
-					sink_no = request.sink_no;
+				log('Received message: browser_action_commit, sink_name: ' + request.sink_name);
+				if (request.sink_name != undefined) {
+					sink_name = request.sink_name;
 					get_devices(true, inspect_devices); // --> inspect_device_infos() --> update_all_sinks()
 				}
-			} else if (request.message == "report_sink_no") {
-				log('Received message: report_sink_no');
-				log('Reply with: sink_no: ' + sink_no);
-				sendResponse({'sink_no': sink_no});
+			} else if (request.message == "report_sink_name") {
+				log('Received message: report_sink_name');
+				log('Reply with: sink_name: ' + sink_name);
+				sendResponse({'sink_name': sink_name});
 			}
 		}
 	)
@@ -93,14 +93,14 @@ function check_node(node) {
 	return false;
 }
 
-// -- Request the default sink_no from the background
-function request_default_no() {
-	log('Requesting default_no ...');
-	chrome.runtime.sendMessage({'method': 'AP_get_default_no'},
+// -- Request the default sink_name from the background
+function request_default_name() {
+	log('Requesting default_name ...');
+	chrome.runtime.sendMessage({'method': 'AP_get_default_name'},
 		function(response) {
 			if (response) {
-				log('Received default_no: ' + response.default_no);
-				sink_no = response.default_no;
+				log('Received default_name: ' + response.default_name);
+				default_device_name = response.default_name;
 			}
 		}
 	)
@@ -129,12 +129,17 @@ function get_devices(getUserMedia, callback) {
 }
 
 function inspect_devices(deviceInfos) {
-	log('Inspecting Devices: ' + deviceInfos.length + ' device(s) total (audio/video input/output)');
+console.log(deviceInfos);
+		log('Inspecting Devices: ' + deviceInfos.length + ' device(s) total (audio/video input/output)');
 	for (var i = 0; i != deviceInfos.length; i++) {
 		var deviceInfo = deviceInfos[i];
+		var text = deviceInfo.label;
+		if (deviceInfo.deviceId == "default") {
+			text = "System Default Device";
+		}
 		//log('  Devices[' + i + ']: ' + deviceInfo.kind + ': ' + deviceInfo.deviceId);
-		if ((deviceInfo.kind == 'audiooutput') && (i == sink_no)) {
-			log('Selecting Devices[' + i + ']: ' + deviceInfo.deviceId);
+		if ((deviceInfo.kind == 'audiooutput') && (text == sink_name)) {
+			log('Selecting Devices[' + deviceInfo.label + ']: ' + deviceInfo.deviceId);
 			sink_id = deviceInfo.deviceId;
 		}
 	}
@@ -186,9 +191,13 @@ function setDefaultDevice()
 		{
 			for (var i = 0; i != deviceInfos.length; i++) {
 				var deviceInfo = deviceInfos[i];
-				if ((deviceInfo.kind == 'audiooutput') && (deviceInfo.label == default_device_name)) {
+				var text = deviceInfo.label;
+				if (deviceInfo.deviceId == "default") {
+					text = "System Default Device";
+				}
+				if ((deviceInfo.kind == 'audiooutput') && (text == default_device_name)) {
 					sink_id = deviceInfo.deviceId;
-					sink_no = i;
+					sink_name = text;
 					break;
 				}
 			}
@@ -199,5 +208,5 @@ function setDefaultDevice()
 
 // -- main ---------------------------------------------------------------
 register_message_listener();
-request_default_no();
+request_default_name();
 setDefaultDevice();
